@@ -16,8 +16,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE,
 
 
 ## Tree-Based Models 
-```{r}
-install.packages("randomForest")
+```{r, message=FALSE}
 library(tidyverse)
 library(tidymodels)
 library(ISLR)
@@ -34,10 +33,8 @@ library(klaR)
 library(pROC)
 library(glmnet)
 library(dplyr)
-tidymodels_prefer()
 library(randomForest)
-urlpackage <- "https://cran.r-project.org/src/contrib/Archive/randomForest/randomForest_4.7-1.tar.gz"
-install.packages(urlpackage, repos=NULL, type="source") 
+tidymodels_prefer()
 ```
 
 
@@ -79,19 +76,112 @@ pokemon_recipe <- recipe(type_1 ~ legendary + generation + sp_atk +
 
 
 ### Exercise 2 
-```{r}
+Create a correlation matrix of the training set, using the corrplot package. Note: You can choose how to handle the continuous variables for this plot; justify your decision(s).
 
+What relationships, if any, do you notice? Do these relationships make sense to you?
+```{r}
+pokemon_train %>%
+  select(is.numeric) %>%
+  cor() %>%
+  corrplot(type = 'lower', diag = FALSE, 
+           method = 'color')
+```
+
+According to the correlation matrix all the variables seem to be positively correlated with each other. 
+The variable "total" seems to be the one that has the highest and most correlationship with the other variables.
+
+
+
+### Exercise 3 
+```{r}
+# Decison Tree Model
+tree_spec <- decision_tree() %>%
+  set_engine("rpart")
+
+class_tree_spec <- tree_spec %>%
+  set_mode("classification")
+
+# Decision Tree Workflow
+class_tree_wf <- workflow() %>%
+  add_model(class_tree_spec %>% 
+              set_args(cost_complexity = tune())) %>%
+  add_recipe(pokemon_recipe)
+
+#Set grid_regular(), same as Lab 7
+param_grid <- grid_regular(cost_complexity(range = c(-3,-1)), levels = 10)
+
+set.seed(0714)
+#Tune_grid()
+tune_res <- tune_grid(
+  class_tree_wf,
+  resamples = pokemon_fold,
+  grid = param_grid,
+  metrics = metric_set(roc_auc),
+  control = control_grid(verbose = TRUE)
+)
+
+#Autoplot results
+autoplot(tune_res)
+```
+
+Based on the graph, a single decision tree performs better with a smaller complexity penalty. The higher the complexity penalty is 
+the lower the ROC AUC is.
+
+
+### Exercise 4 
+What is the roc_auc of your best-performing pruned decision tree on the folds? Hint: Use collect_metrics() and arrange().
+```{r}
+collect_metrics(tune_res) %>%
+  arrange(mean)
+
+best_complexity <- select_best(tune_res, metric = "roc_auc")
+```
+
+The model with the best-performing pruned decision tree on the folds is the 4th model with a cost complexity of 0.00464, and it also had the highest
+mean which indicates the average value of the performance metric that was obtained. 
+
+### Exercise 5 
+Using rpart.plot, fit and visualize your best-performing pruned decision tree with the training set.
+```{r}
+#Finalize Workflow
+class_tree_final <- finalize_workflow(class_tree_wf, best_complexity)
+
+#Fit to training data
+class_tree_final_fit <- fit(class_tree_final, data = pokemon_train)
+
+#Visualize model
+dt_plot <- class_tree_final_fit %>%
+  extract_fit_engine() %>%
+  rpart.plot()
 ```
 
 
 
+### Exercise 5 
+Now set up a random forest model and workflow. Use the ranger engine and set importance = "impurity". Tune mtry, trees, and min_n. Using the documentation for rand_forest(), explain in your own words what each of these hyperparameters represent.
+
+Create a regular grid with 8 levels each. You can choose plausible ranges for each hyperparameter. Note that mtry should not be smaller than 1 or larger than 8. Explain why not. What type of model would mtry = 8 represent?
+
+```{r}
+# Random Forest Model
+rf_spec <- rand_forest(mtry = tune(), trees = tune(), min_n = tune()) %>%
+  set_engine("ranger", importance = "impurity") %>%
+  set_mode("classification")
+
+# Random Forest Workflow
+rf_wf <- workflow() %>%
+  add_model(rf_spec) %>%
+  add_recipe(pokemon_recipe)
 
 
 
 
+```
 
 
-
+The hyperparameter mtry represents the number of predictors that will be randomly sampled at each split when creating the tree models. 
+The hyperparameter trees represents the number of trees contained in the ensemble. 
+The hyperparameter min_n represents the minimum number of data points in a node that are required for the node to be split further. 
 
 
 
