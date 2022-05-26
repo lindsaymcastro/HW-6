@@ -1,0 +1,129 @@
+---
+title: "Homework 6"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    code_folding: show
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warning = FALSE)
+```
+
+
+## Tree-Based Models 
+```{r}
+install.packages("randomForest")
+library(tidyverse)
+library(tidymodels)
+library(ISLR)
+library(rpart.plot)
+library(vip)
+library(janitor)
+library(xgboost)
+library(ISLR2) 
+library(discrim)
+library(poissonreg)
+library(corrr)
+library(corrplot)
+library(klaR) 
+library(pROC)
+library(glmnet)
+library(dplyr)
+tidymodels_prefer()
+library(randomForest)
+urlpackage <- "https://cran.r-project.org/src/contrib/Archive/randomForest/randomForest_4.7-1.tar.gz"
+install.packages(urlpackage, repos=NULL, type="source") 
+```
+
+
+
+### Exercise 1 
+```{r}
+pokemon <- read.csv(file = "homework-6/data/pokemon.csv") %>%
+  clean_names()
+
+# Filter out rarer Pokemon types
+pokemon <- pokemon %>%
+  filter(type_1 == "Bug" | type_1 == "Fire" | type_1 == "Grass" | type_1 ==  "Normal" | type_1 ==  "Water" | type_1 == "Psychic")
+
+# Convert to factors
+pokemon$type_1 <- as.factor(pokemon$type_1)
+pokemon$legendary <- as.factor(pokemon$legendary)
+pokemon$generation <- as.factor(pokemon$generation)
+
+set.seed(0714)
+
+# Initial Split
+pokemon_split <- initial_split(pokemon, strata = type_1, prop = 0.7)
+
+#Separate into training and testing
+pokemon_train <- training(pokemon_split)
+pokemon_test <- testing(pokemon_split)
+
+# V-fold cross validation
+pokemon_fold <- vfold_cv(pokemon_train, strata = type_1, v = 5)
+
+# Create recipe
+pokemon_recipe <- recipe(type_1 ~ legendary + generation + sp_atk +
+                           attack + speed + defense + hp + sp_def,
+                         data = pokemon_train) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_normalize(all_predictors())
+
+```
+
+
+### Exercise 2 
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
